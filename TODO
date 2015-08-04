@@ -1,4 +1,2 @@
 DS3231 AT24C32 IIC Precision RTC Real Time Clock Memory Module for Arduino
 
-pin A4 (SDA) and pin A5 (SCL) are already being used by the relay - Move to different pins
-    so that RTC module can be connected there.
