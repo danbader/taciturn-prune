@@ -1,6 +1,7 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <LiquidCrystal.h>
+#include <Wire.h>
 
 //Analog pin used to read buttons
 #define BUTTONS_PIN A0
@@ -31,8 +32,11 @@
 #define BACKLIGHT_ON_OFF 13
 
 //the output connected to relay 1
-#define RELAY_ONE_OUTPUT A4
-#define RELAY_TWO_OUTPUT A5
+#define RELAY_ONE_OUTPUT A2
+#define RELAY_TWO_OUTPUT A3
+
+//SDA (data) is A4 pin and SCL (clock) is A5
+#define DS3231_I2C_ADDRESS 0x68
 
 //set this to the number of degrees +/- the current setting
 //to prevent short cycling
@@ -73,6 +77,69 @@ void printNormal(void)
   lcd.print("OFF");
 }
 
+// Convert normal decimal numbers to binary coded decimal
+byte decimalToBinaryCodedDecimal(byte p_val)
+{
+  return ((p_val / 10 * 16) + (p_val % 10));
+}
+
+// Convert binary coded decimal to normal decimal numbers
+byte binaryCodedDecimalToDecimal(byte p_val)
+{
+  return ((p_val / 16 * 10) + (p_val % 16));
+}
+
+void setDS3231time(byte p_second,
+                   byte P-minute,
+                   byte p_hour,
+                   byte p_dayOfWeek,
+                   byte p_dayOfMonth,
+                   byte p_month,
+                   byte p_year)
+{
+  // sets time and date data to DS3231
+  Wire.beginTransmission(DS3231_I2C_ADDRESS);
+  // set next input to start at the seconds register
+  Wire.write(0);
+  // set seconds
+  Wire.write(decmalToBinaryCodedDecimal(p_second));
+  // set minutes
+  Wire.write(decmalToBinaryCodedDecimal(p_minute));
+  // set hours
+  Wire.write(decmalToBinaryCodedDecimal(p_hour));
+  // set day of week (1=Sunday, 7=Saturday)
+  Wire.write(decmalToBinaryCodedDecimal(p_dayOfWeek));
+  // set date (1 to 31)
+  Wire.write(decmalToBinaryCodedDecimal(p_dayOfMonth));
+  // set month
+  Wire.write(decmalToBinaryCodedDecimal(p_month));
+  // set year (0 to 99)
+  Wire.write(decmalToBinaryCodedDecimal(p_year));
+  Wire.endTransmission();
+}
+void readDS3231time(byte *p_second,
+                    byte *p_minute,
+                    byte *p_hour,
+                    byte *p_dayOfWeek,
+                    byte *p_dayOfMonth,
+                    byte *p_month,
+                    byte *p_year)
+{
+  Wire.beginTransmission(DS3231_I2C_ADDRESS);
+  // set DS3231 register pointer to 00h
+  Wire.write(0);
+  Wire.endTransmission();
+  Wire.requestFrom(DS3231_I2C_ADDRESS, 7);
+  // request seven bytes of data from DS3231 starting from register 00h
+  *p_second = binaryCodedDecimalToDecimal(Wire.read() & 0x7f);
+  *p_minute = binaryCodedDecimalToDecimal(Wire.read());
+  *p_hour = binaryCodedDecimalToDecimal(Wire.read() & 0x3f);
+  *p_dayOfWeek = binaryCodedDecimalToDecimal(Wire.read());
+  *p_dayOfMonth = binaryCodedDecimalToDecimal(Wire.read());
+  *p_month = binaryCodedDecimalToDecimal(Wire.read());
+  *p_year = binaryCodedDecimalToDecimal(Wire.read());
+}
+
 
 void setup(void)
 {
@@ -83,6 +150,14 @@ void setup(void)
   pinMode(BACKLIGHT_ON_OFF, OUTPUT);
   //High turns backlight on, low turns it off
   digitalWrite(BACKLIGHT_ON_OFF, HIGH);
+
+  //start wire lib for I2C bus
+  Wire.begin();
+
+  //set the initial time here:
+  //DS3231 seconds, minutes, hours, day, date, month, year
+  // 24 hour clock, days are 1-7 (Sunday - Saturday)
+  //setDS3231time(30, 42, 21, 4, 26, 11, 14);
 
   // start serial port
   //Serial.begin(9600);
