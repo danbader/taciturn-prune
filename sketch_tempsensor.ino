@@ -56,6 +56,8 @@
 
 #define ONE_DAY 86400000
 
+#define IDLE_TIME 10000
+
 // Setup a oneWire instance to communicate with any OneWire devices 
 // (not just Maxim/Dallas temperature ICs)
 OneWire oneWire(ONE_WIRE_BUS);
@@ -77,6 +79,8 @@ void printNormal(void)
   lcd.print("OFF");
 }
 
+
+
 // Convert normal decimal numbers to binary coded decimal
 byte decimalToBinaryCodedDecimal(byte p_val)
 {
@@ -90,7 +94,7 @@ byte binaryCodedDecimalToDecimal(byte p_val)
 }
 
 void setDS3231time(byte p_second,
-                   byte P-minute,
+                   byte p_minute,
                    byte p_hour,
                    byte p_dayOfWeek,
                    byte p_dayOfMonth,
@@ -102,21 +106,22 @@ void setDS3231time(byte p_second,
   // set next input to start at the seconds register
   Wire.write(0);
   // set seconds
-  Wire.write(decmalToBinaryCodedDecimal(p_second));
+  Wire.write(decimalToBinaryCodedDecimal(p_second));
   // set minutes
-  Wire.write(decmalToBinaryCodedDecimal(p_minute));
+  Wire.write(decimalToBinaryCodedDecimal(p_minute));
   // set hours
-  Wire.write(decmalToBinaryCodedDecimal(p_hour));
+  Wire.write(decimalToBinaryCodedDecimal(p_hour));
   // set day of week (1=Sunday, 7=Saturday)
-  Wire.write(decmalToBinaryCodedDecimal(p_dayOfWeek));
+  Wire.write(decimalToBinaryCodedDecimal(p_dayOfWeek));
   // set date (1 to 31)
-  Wire.write(decmalToBinaryCodedDecimal(p_dayOfMonth));
+  Wire.write(decimalToBinaryCodedDecimal(p_dayOfMonth));
   // set month
-  Wire.write(decmalToBinaryCodedDecimal(p_month));
+  Wire.write(decimalToBinaryCodedDecimal(p_month));
   // set year (0 to 99)
-  Wire.write(decmalToBinaryCodedDecimal(p_year));
+  Wire.write(decimalToBinaryCodedDecimal(p_year));
   Wire.endTransmission();
 }
+
 void readDS3231time(byte *p_second,
                     byte *p_minute,
                     byte *p_hour,
@@ -140,6 +145,18 @@ void readDS3231time(byte *p_second,
   *p_year = binaryCodedDecimalToDecimal(Wire.read());
 }
 
+//Update all of these:
+static unsigned long times[] = {ONE_DAY * 5, ONE_DAY / 2, ONE_DAY / 2, ONE_DAY * 7, ONE_DAY / 2, ONE_DAY / 2, ONE_DAY / 2, ONE_DAY / 2, ONE_DAY / 2, ONE_DAY * 3};
+static float temperatures[] = {52.0, 57.0, 62.0, 67.0, 62.0, 57.0, 52.0, 47.0, 40.0, 32.0};
+static int maxIndex(9);
+
+static unsigned long initialStartTime(millis());
+static int currentIndex(0);
+static unsigned long changeTime(initialStartTime + times[currentIndex]);
+static bool isOn(false);
+static bool isIdle(false);
+static unsigned long idleTime(initialStartTime + IDLE_TIME);
+static bool isChangedByUser = false;
 
 void setup(void)
 {
@@ -154,13 +171,49 @@ void setup(void)
   //start wire lib for I2C bus
   Wire.begin();
 
-  //set the initial time here:
-  //DS3231 seconds, minutes, hours, day, date, month, year
-  // 24 hour clock, days are 1-7 (Sunday - Saturday)
-  //setDS3231time(30, 42, 21, 4, 26, 11, 14);
+  byte second;
+  byte minute;
+  byte hour;
+  byte dayOfWeek;
+  byte dayOfMonth;
+  byte month;
+  byte year;
+  
+  readDS3231time(&second,
+                 &minute,
+                 &hour,
+                 &dayOfWeek,
+                 &dayOfMonth,
+                 &month,
+                 &year);
+  //adjust currentIndex and changeTime based on the current clock time
+  unsigned long summedTimes = times[currentIndex];
+  
+  //2678400000 31 days in january..
+  //I would need to redo this whole thing if we plan to run for more than 49 days
+  unsigned long calculatedTime = (second * 1000) +
+    (minute * 60000) +
+    (hour * 3600000) +
+    ((dayOfMonth - 1) * 86400000) +
+    ((month - 1) * 2678400000);
+
+  while(calculatedTime > summedTimes &&
+     currentIndex < maxIndex)
+  {
+    ++currentIndex;
+    summedTimes += times[currentIndex];
+  }
+  changeTime = millis() + times[currentIndex];
 
   // start serial port
   //Serial.begin(9600);
+  //Serial.println(second);
+  //Serial.println(minute);
+  //Serial.println(hour);
+  //Serial.println(dayOfWeek);
+  //Serial.println(dayOfMonth);
+  //Serial.println(month);
+  //Serial.println(year);
 
   // Start up the library
   sensors.begin();
@@ -168,25 +221,7 @@ void setup(void)
   //Start LCD library
   lcd.begin(16, 2);
   printNormal();
-  //lcd.print("Current: ");
-  //lcd.setCursor(0, 1);
-  //lcd.print("Set: ");
-  //lcd.setCursor(12, 1);
-  //lcd.print("OFF");
 }
-
-//should be local to this loop
-static unsigned long times[] = {ONE_DAY * 6, ONE_DAY / 2, ONE_DAY / 2, ONE_DAY * 10, ONE_DAY / 2, ONE_DAY / 2, ONE_DAY / 2, ONE_DAY / 2, ONE_DAY / 2, ONE_DAY * 3};
-static float temperatures[] = {52.0, 57.0, 62.0, 67.0, 62.0, 57.0, 52.0, 47.0, 40.0, 32.0};
-static unsigned long initialStartTime(millis());
-static int currentIndex(0);
-static int maxIndex(4);
-static unsigned long changeTime(initialStartTime + times[currentIndex]);
-static bool isOn(false);
-static bool isIdle(false);
-static unsigned long idleTime(initialStartTime + 20000);
-static bool isChangedByUser = false;
-
 
 void printMenu(void)
 {
@@ -224,13 +259,50 @@ void printMenu(void)
     //update idle time and screen
     if(buttonValue > BUTTON_1_RANGE_LOWER_BOUND)
     {
-      idleTime = currentTime + 20000;
+      idleTime = currentTime + IDLE_TIME;
       lcd.setCursor(5, 1);
       lcd.print(temperatures[currentIndex]);
     }
     
     currentTime = millis();
   }
+  printNormal();
+}
+
+void printResetTimeMenu(void)
+{
+  unsigned long currentTime = millis();
+  unsigned long startTime = millis();
+  lcd.setCursor(0,0);
+  lcd.print("Hold down to rst");
+
+  unsigned long heldTime = 0;
+  while(currentTime < idleTime)
+  {
+    int buttonValue = analogRead(BUTTONS_PIN);
+
+    if(buttonValue > BUTTON_3_RANGE_LOWER_BOUND)
+    {
+      heldTime += currentTime - startTime;
+    }
+    delay(500);
+    currentTime = millis();
+  }
+  if(heldTime > 5000)
+  {
+    lcd.setCursor(0,0);
+    lcd.print("Resetting Time  ");
+    //set the initial time here:
+    //DS3231 seconds, minutes, hours, day, date, month, year
+    // 24 hour clock, days are 1-7 (Sunday - Saturday)
+    setDS3231time(0, 0, 0, 1, 1, 1, 1);
+
+    currentIndex = 0;
+    changeTime = currentTime + times[currentIndex];
+
+    delay(1000);
+  }
+
   printNormal();
 }
 
@@ -252,8 +324,16 @@ void loop(void)
   {
     digitalWrite(BACKLIGHT_ON_OFF, HIGH);
     isIdle = false;
-    idleTime = currentTime + 20000;
-    printMenu();
+    idleTime = currentTime + IDLE_TIME;
+
+    if(buttonValue > BUTTON_3_RANGE_LOWER_BOUND)
+    {
+      printResetTimeMenu();
+    }
+    else
+    {
+      printMenu();
+    }
   }
   if(currentTime > idleTime)
   {
