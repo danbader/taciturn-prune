@@ -1,3 +1,27 @@
+/*
+The MIT License (MIT)
+
+Copyright (c) 2015 Dan Bader
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <LiquidCrystal.h>
@@ -78,8 +102,6 @@ void printNormal(void)
   lcd.setCursor(12, 1);
   lcd.print("OFF");
 }
-
-
 
 // Convert normal decimal numbers to binary coded decimal
 byte decimalToBinaryCodedDecimal(byte p_val)
@@ -189,8 +211,6 @@ void setup(void)
   //adjust currentIndex and changeTime based on the current clock time
   unsigned long summedTimes = times[currentIndex];
   
-  //2678400000 31 days in january..
-  //I would need to redo this whole thing if we plan to run for more than 49 days
   unsigned long calculatedTime = (second * 1000) +
     (minute * 60000) +
     (hour * 3600000) +
@@ -204,16 +224,6 @@ void setup(void)
     summedTimes += times[currentIndex];
   }
   changeTime = millis() + times[currentIndex];
-
-  // start serial port
-  //Serial.begin(9600);
-  //Serial.println(second);
-  //Serial.println(minute);
-  //Serial.println(hour);
-  //Serial.println(dayOfWeek);
-  //Serial.println(dayOfMonth);
-  //Serial.println(month);
-  //Serial.println(year);
 
   // Start up the library
   sensors.begin();
@@ -288,6 +298,7 @@ void printResetTimeMenu(void)
     delay(500);
     currentTime = millis();
   }
+ 
   if(heldTime > 5000)
   {
     lcd.setCursor(0,0);
@@ -313,8 +324,7 @@ void loop(void)
      currentTime > changeTime &&
      currentIndex < maxIndex)
   {
-    //Serial.print(currentTime);
-    //Serial.println("milliseconds, changing index");
+    //Move to the next time interval
     ++currentIndex;
     changeTime = millis() + times[currentIndex];
   }
@@ -341,32 +351,24 @@ void loop(void)
     isIdle = true;
   }
 
-
-  //Serial.println(buttonValue);
-
   // call sensors.requestTemperatures() to issue a global temperature
   // request to all devices on the bus
   sensors.requestTemperatures(); // Send the command to get temperatures
 
-  //Serial.print("Current Setting: ");
-  //Serial.print(temperatures[currentIndex]);
-  //Serial.print(" Actual Temp for Device 1 is: ");
   float tempInFahrenheit = sensors.getTempCByIndex(0) * 9. / 5. + 32;
   
   lcd.setCursor(9, 0);
   lcd.print(tempInFahrenheit);
   lcd.setCursor(5, 1);
   lcd.print(temperatures[currentIndex]);
-  //Serial.println(tempInFahrenheit); // Why "byIndex"? 
-    // You can have more than one IC on the same bus. 
-    // 0 refers to the first IC on the wire
+
   if(tempInFahrenheit > (temperatures[currentIndex] + SHORT_CYCLING_FACTOR)
      && !isOn)
   {
     isOn = true;
     lcd.setCursor(12, 1);
     lcd.print("ON ");
-    //Serial.println(": TURN ON Refrigerator");
+    //Turn on the Refrigerator
     digitalWrite(RELAY_ONE_OUTPUT, LOW);
   }
   else if(tempInFahrenheit <= (temperatures[currentIndex] - SHORT_CYCLING_FACTOR)
@@ -375,7 +377,7 @@ void loop(void)
     isOn = false;
     lcd.setCursor(12, 1);
     lcd.print("OFF");
-    //Serial.println(": TURN OFF Refrigerator");
+    //Turn off the refrigerator
     digitalWrite(RELAY_ONE_OUTPUT, HIGH);
   }
 }
