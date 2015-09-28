@@ -3,6 +3,4 @@ DS3231 AT24C32 IIC Precision RTC Real Time Clock Memory Module for Arduino
 - Need to add code to write a start date to EEPROM. This should maybe use some sort of rotating
     algorithm to keep the EEPROM from aging too fast. Also, might want to consider how to
     distinguish when the actual start date is supposed to be versus when a power outage happened.
-- Set date to 0,0,0,0,0,0,0 when first flashing it?
-- Have a reset start date menu option??
 - Store custom settings to EEPROM instead of start date??
