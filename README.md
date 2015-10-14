@@ -1,7 +1,7 @@
 # taciturn-prune
 Arduino Temperature Sensor<br>
 <br>
-This project creates a temperature controller that can be programmed with a temperature schedule. The schedule can also be overridden by changing the current setting, in which case it becomes just like a commercial temperature controller that you have to update anytime you want the temperature to switch. The schedule is currently hardcoded in the code, so the Arduino must be programmed from a computer to update it. This also included a Real Time Clock chip that allows the controller to resume the schedule from where it would be if the power goes out unexpectedly. Also, the user can reset the chip and start the schedule over if they are brewing the same recipe and want to execute the same schedule from the beginning by holding down button 3 for 5 seconds.<br>
+This project creates a temperature controller that can be programmed with a temperature schedule. The schedule can also be overridden by changing the current setting, in which case it becomes just like a commercial temperature controller that you have to update anytime you want the temperature to switch. The schedule is currently hardcoded in the code, so the Arduino must be programmed from a computer to update it. This also includes a Real Time Clock chip that allows the controller to resume the schedule from where it would be if the power goes out unexpectedly. Also, the user can reset the chip and start the schedule over if they are brewing the same recipe and want to execute the same schedule from the beginning by holding down button 3 for 5 seconds.<br>
 <br>
 Parts:<br>
 Arduino UNO<br>
