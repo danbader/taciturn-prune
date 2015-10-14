@@ -21,4 +21,5 @@ DS18B20 Waterproof temperature sensor
 
 DS3231 RTC Module
 2Channel Relay module
-Extension cord
+
+Extension cord - split the live wire with the relay bridging the connection when activated. Please be very sure of what you are doing. Do NOT electricute yourself accidentally!
